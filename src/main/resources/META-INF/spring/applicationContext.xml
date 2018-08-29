@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+  
+  <bean id="memoryAggregationRepository" class="org.apache.camel.processor.aggregate.MemoryAggregationRepository"/>
+  
+  <bean id="xsltEnrichmentStrategy" class="org.apache.camel.util.toolbox.XsltAggregationStrategy">
+    <constructor-arg value="/META-INF/xslt/EnrichIndexHtml.xsl"/>
+  </bean>
+  
+  <camelContext id="camelContext" xmlns="http://camel.apache.org/schema/spring">
+    
+    <route id="servletRoute">
+      <from uri="jetty:http://localhost:8080/catalog?httpMethodRestrict=GET"/>
+      <to uri="direct:handleGet"/>
+    </route>
+    
+    <route id="handleGetRequest">
+      <from uri="direct:handleGet"/>
+      <to uri="language:constant:classpath:/META-INF/html/index.html"/>
+      <enrich strategyRef="xsltEnrichmentStrategy">
+        <constant>direct:fetchCds</constant>
+      </enrich>
+    </route>
+    
+    <route id="fetchCdsRoute">
+      <from uri="direct:fetchCds"/>
+      <!-- Note: You could fetch these records from anywhere. Most likely from a DB or some backend WS. -->
+      <to uri="language:constant:classpath:/META-INF/xml/catalog.xml"/>
+    </route>
+    
+  </camelContext>
+
+</beans>
